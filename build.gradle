@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.78'
+}
+
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// Dev-only end-to-end test (src/devtest); never ends up in the jar.
+sourceSets {
+    devtest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations {
+    devtestImplementation.extendsFrom implementation
+    devtestCompileOnly.extendsFrom compileOnly
+}
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        server {
+            server()
+            programArguments.addAll '--nogui'
+        }
+        // Starts a server, spawns an agent, drives it through the MCP endpoint, checks the results, then stops.
+        devtest {
+            server()
+            gameDirectory = project.file('run/devtest')
+            systemProperty 'agentplayers.devtest', 'true'
+            programArguments.addAll '--nogui'
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.devtest
+        }
+    }
+}
+
+neoForge.addModdingDependenciesTo(sourceSets.devtest)
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+        mod_id: mod_id, mod_name: mod_name, mod_version: mod_version,
+        mod_authors: mod_authors, mod_license: mod_license
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into "${layout.buildDirectory.get()}/generated/sources/modMetadata"
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+jar {
+    from('LICENSE') { into 'META-INF' }
+    manifest {
+        attributes([
+            'Specification-Title'   : mod_id,
+            'Specification-Vendor'  : mod_authors,
+            'Specification-Version' : '1',
+            'Implementation-Title'  : mod_name,
+            'Implementation-Version': mod_version,
+            'Implementation-Vendor' : mod_authors
+        ])
+    }
+}

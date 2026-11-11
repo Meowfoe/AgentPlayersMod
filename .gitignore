@@ -1,0 +1,11 @@
+# mongoose's client mod, kept locally as a reference only
+reference/
+
+.gradle/
+build/
+run/
+out/
+.idea/
+*.iml
+.vscode/
+devtest_results.txt
